@@ -1,4 +1,4 @@
-const uuid = require('uuid/v4');
+const { v4: uuidv4 } = require('uuid');
 const HttpError = require('../models/http-error');
 
 const DUMMY_USERS = [
@@ -16,7 +16,7 @@ exports.signup = (req, res, next) => {
   if (hasUser) {
     throw new HttpError('User already exists', 422);
   }
-  const createdUser = { id: uuid(), name, email, password };
+  const createdUser = { id: uuidv4(), name, email, password };
   DUMMY_USERS.push(createdUser);
   res.status(201).json({
     user: createdUser,

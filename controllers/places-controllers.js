@@ -1,5 +1,6 @@
 const HttpError = require('../models/http-error');
-const uuid = require('uuid/v4');
+const { v4: uuidv4 } = require('uuid');
+const Place = require('./../models/place');
 
 let DUMMY_PLACES = [
   {
@@ -15,17 +16,21 @@ let DUMMY_PLACES = [
   },
 ];
 
-exports.getPlaceById = (req, res, next) => {
+exports.getPlaceById = async (req, res, next) => {
   const placeId = req.params.pid;
-  console.log('get from places');
-  const place = DUMMY_PLACES.find((place) => place.id === placeId);
-  if (!place) {
-    throw new HttpError('Could not find place');
+  console.log(placeId);
+
+  try {
+    const place = await Place.findById(placeId);
+
+    return res.json({
+      message: 'it works',
+      place,
+    });
+  } catch (err) {
+    const error = new HttpError('Could not find by ID', 404);
+    return next(error);
   }
-  res.json({
-    message: 'it works',
-    place,
-  });
 };
 
 exports.getPlacesByUserId = (req, res, next) => {
@@ -37,17 +42,26 @@ exports.getPlacesByUserId = (req, res, next) => {
   res.json({ places });
 };
 
-exports.createPlace = (req, res, next) => {
-  const { title, description, coordinates, address, creator } = req.body;
-  const createdPlace = {
-    id: uuid(),
+exports.createPlace = async (req, res, next) => {
+  const { title, description, location, address, creator } = req.body;
+  const createdPlace = new Place({
     title,
     description,
-    location: coordinates,
+    location,
     address,
     creator,
-  };
-  DUMMY_PLACES.push(createdPlace);
+    image:
+      'https://media.istockphoto.com/photos/low-angle-of-tall-building-in-manhattan-picture-id1291177121',
+    creator,
+  });
+  try {
+    await createdPlace.save();
+  } catch (err) {
+    console.log(err);
+    const error = new HttpError('Creating a place failed');
+    return next(error);
+  }
+
   res.status(201).json({ place: createdPlace });
 };
 

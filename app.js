@@ -1,6 +1,9 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
 const HttpError = require('./models/http-error');
+const dotenv = require('dotenv');
+dotenv.config({ path: './config.env' });
 
 const placesRoutes = require('./routes/places-routes');
 const usersRoutes = require('./routes/users-routes');
@@ -25,7 +28,9 @@ app.use((error, req, res, next) => {
     message: error.message || 'Unknown error occured',
   });
 });
-
-app.listen(5000, () => {
-  console.log('listeing');
+DB_URL = process.env.DB.replace('<password>', process.env.DB_PASSWORD);
+mongoose.connect(DB_URL).then(() => {
+  console.log('DB connection running');
 });
+
+app.listen(5000);

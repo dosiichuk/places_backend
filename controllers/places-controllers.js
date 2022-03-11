@@ -33,13 +33,21 @@ exports.getPlaceById = async (req, res, next) => {
   }
 };
 
-exports.getPlacesByUserId = (req, res, next) => {
+exports.getPlacesByUserId = async (req, res, next) => {
   const userId = req.params.uid;
-  const places = DUMMY_PLACES.filter((place) => place.creator === userId);
+  let places;
+  try {
+    places = await Place.find({ creator: userId });
+  } catch (err) {
+    const error = new HttpError('Could not fetch places', 500);
+    return next(error);
+  }
   if (!places || places.length === 0) {
     return next(new HttpError('Could not find places'));
   }
-  res.json({ places });
+  res.json({
+    places: places.map((place) => place.toObject({ getters: true })),
+  });
 };
 
 exports.createPlace = async (req, res, next) => {
@@ -57,7 +65,6 @@ exports.createPlace = async (req, res, next) => {
   try {
     await createdPlace.save();
   } catch (err) {
-    console.log(err);
     const error = new HttpError('Creating a place failed');
     return next(error);
   }
@@ -65,22 +72,39 @@ exports.createPlace = async (req, res, next) => {
   res.status(201).json({ place: createdPlace });
 };
 
-exports.updatePlaceById = (req, res, next) => {
+exports.updatePlaceById = async (req, res, next) => {
   const { title, description } = req.body;
   const placeId = req.params.pid;
-  const updatedPlace = { ...DUMMY_PLACES.find((p) => p.id === placeId) };
-  const placeIndex = DUMMY_PLACES.findIndex((p) => p.id === placeId);
-  updatedPlace.title = title;
-  updatedPlace.description = description;
-  DUMMY_PLACES[placeIndex] = updatedPlace;
+  let place;
+  try {
+    place = await Place.find({ id: placeId });
+  } catch (err) {
+    const error = new HttpError('Updating a place failed');
+    return next(error);
+  }
+
+  place.title = title;
+  place.description = description;
+  try {
+    await place.save();
+  } catch (err) {
+    const error = new HttpError('Update failed');
+    return next(error);
+  }
   res.status(200).json({
-    place: updatedPlace,
+    place,
   });
 };
 
-exports.deletePlace = (req, res, next) => {
+exports.deletePlace = async (req, res, next) => {
   const placeId = req.params.pid;
-  DUMMY_PLACES = DUMMY_PLACES.filter((p) => p.id !== placeId);
+
+  try {
+    await Place.findByIdAndDelete(placeId);
+  } catch (err) {
+    const error = new HttpError('Deletion failed');
+    return next(error);
+  }
   res.status(201).json({
     message: 'deleted',
   });

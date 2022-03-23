@@ -1,5 +1,5 @@
 const express = require('express');
-const HttpError = require('../models/http-error');
+
 const usersControllers = require('../controllers/users-controllers');
 
 const router = express.Router();

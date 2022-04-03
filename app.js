@@ -51,4 +51,4 @@ mongoose.connect(DB_URL).then(() => {
   console.log('DB connection running');
 });
 
-app.listen(5000);
+app.listen(process.env.PORT || 5000);

@@ -1,5 +1,5 @@
 const HttpError = require('../models/http-error');
-
+const fs = require('fs');
 const Place = require('./../models/place');
 const User = require('../models/user');
 const mongoose = require('mongoose');
@@ -45,8 +45,7 @@ exports.createPlace = async (req, res, next) => {
     description,
     location,
     address,
-    image:
-      'https://media.istockphoto.com/photos/low-angle-of-tall-building-in-manhattan-picture-id1291177121',
+    image: req.file.path,
     creator,
   });
   let user;
@@ -60,7 +59,7 @@ exports.createPlace = async (req, res, next) => {
     const error = new HttpError('Could not find user by Id', 404);
     return next(error);
   }
-  console.log('user', user);
+
   try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
@@ -70,7 +69,7 @@ exports.createPlace = async (req, res, next) => {
     await sess.commitTransaction();
   } catch (err) {
     const error = new HttpError('Creating a place failed');
-    console.log(err);
+    console.log(err, 'awefaerf');
     return next(error);
   }
 
@@ -79,20 +78,28 @@ exports.createPlace = async (req, res, next) => {
 
 exports.updatePlaceById = async (req, res, next) => {
   const { title, description } = req.body;
+  console.log(title, description, req.params.pid);
   const placeId = req.params.pid;
   let place;
   try {
-    place = await Place.find({ id: placeId });
+    place = await Place.findOne({ _id: placeId });
   } catch (err) {
-    const error = new HttpError('Updating a place failed');
+    const error = new HttpError('Updating a place failed!!!!');
+    return next(error);
+  }
+  if (place.creator.toString() !== req.userData.userId) {
+    const error = new HttpError('Updating a place failed!!!!', 401);
     return next(error);
   }
 
   place.title = title;
   place.description = description;
+
+  place = new Place(place);
   try {
     await place.save();
   } catch (err) {
+    console.log(err);
     const error = new HttpError('Update failed');
     return next(error);
   }
@@ -103,11 +110,16 @@ exports.updatePlaceById = async (req, res, next) => {
 
 exports.deletePlace = async (req, res, next) => {
   const placeId = req.params.pid;
+
   let place;
   try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
     place = await Place.findById(placeId).populate('creator');
+    const imagePath = place.image;
+    fs.unlink(imagePath, (err) => {
+      console.log(err);
+    });
     await place.remove({ session: sess });
     place.creator.places.pull(place);
     await place.creator.save({ session: sess });
